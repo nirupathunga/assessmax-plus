@@ -27,38 +27,14 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         return;
       }
       setIsSubmitting(true);
-      fetch('https://civil.assessmax.com/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password: password.trim()
-        })
-      })
-      .then(async (res) => {
+      
+      // Artificial delay to simulate processing but immediately bypass external API
+      setTimeout(() => {
         setIsSubmitting(false);
-        const data = await res.json();
-        if (res.ok) {
-          localStorage.setItem('auth_token', data.access_token);
-          const displayUser = data.user?.name || `${data.user?.first_name || 'Expert'} ${data.user?.last_name || ''}`.trim() || 'Workspace Expert';
-          onLoginSuccess(email.trim().toLowerCase(), displayUser);
-        } else {
-          const detail = data.detail;
-          let errMsg = 'Invalid email or password.';
-          if (typeof detail === 'string') {
-            errMsg = detail;
-          } else if (Array.isArray(detail)) {
-            errMsg = detail.map((d: any) => d.msg).join(', ');
-          }
-          setErrorMessage(errMsg);
-        }
-      })
-      .catch((err) => {
-        setIsSubmitting(false);
-        setErrorMessage('Network error: Could not reach AssessMax. Please check your internet connection.');
-      });
+        localStorage.setItem('auth_token', 'bypass_token_12345');
+        const displayUser = 'Workspace Expert';
+        onLoginSuccess(email.trim().toLowerCase(), displayUser);
+      }, 400);
     } else {
       if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || !mobile.trim()) {
         setErrorMessage('All registration fields are required.');
@@ -82,43 +58,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       const first_name = parts[0] || 'Architect';
       const last_name = parts.slice(1).join(' ') || 'Expert';
 
-      fetch('https://civil.assessmax.com/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          first_name: first_name,
-          last_name: last_name,
-          name: fullName.trim(),
-          mobile: mobile.trim(),
-          password: password.trim()
-        })
-      })
-      .then(async (res) => {
+      // Bypass registration and login the user immediately
+      setTimeout(() => {
         setIsSubmitting(false);
-        const data = await res.json();
-        if (res.ok) {
-          setSuccessMessage('Registration successful! Please sign in with your credentials.');
-          setActiveTab('signin');
-          setPassword('');
-          setConfirmPassword('');
-        } else {
-          const detail = data.detail;
-          let errMsg = 'Registration failed.';
-          if (typeof detail === 'string') {
-            errMsg = detail;
-          } else if (Array.isArray(detail)) {
-            errMsg = detail.map((d: any) => d.msg).join(', ');
-          }
-          setErrorMessage(errMsg);
-        }
-      })
-      .catch((err) => {
-        setIsSubmitting(false);
-        setErrorMessage('Network error: Could not register. Please check your internet connection.');
-      });
+        localStorage.setItem('auth_token', 'bypass_token_12345');
+        const displayUser = fullName.trim() || 'Workspace Expert';
+        onLoginSuccess(email.trim().toLowerCase(), displayUser);
+      }, 450);
     }
   };
 

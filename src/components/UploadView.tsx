@@ -15,19 +15,21 @@ const uploadSteps = [
   { id: 'floor-beam', title: 'Floor Beam', displayId: 'floor_beam' },
   { id: 'floor-slab', title: 'Floor Slab', displayId: 'floor_slab' },
   { id: 'columns', title: 'Columns', displayId: 'columns' },
-  { id: 'plan', title: 'Plan', displayId: 'plan' },
-  { id: 'elevation', title: 'Elevation', displayId: 'elevation' }
+  { id: 'superstructure', title: 'Superstructure & Finishes', displayId: 'superstructure' },
+  { id: 'lintel-beam', title: 'Lintel Beam', displayId: 'lintel_beam' },
+  { id: 'staircase', title: 'Staircase', displayId: 'staircase' }
 ];
 
 export default function UploadView({ clients, onCancel, onSubmit, onSessionExpired }: UploadViewProps) {
   const [projectName, setProjectName] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
   const [floorsCount, setFloorsCount] = useState<number>(1);
-  const [selectedDrawingTypeIds, setSelectedDrawingTypeIds] = useState<string[]>(['foundation']); // Default to Foundation highlighted
+  const [selectedDrawingTypeIds, setSelectedDrawingTypeIds] = useState<string[]>([]); // Empty default selection
   const [errorStatus, setErrorStatus] = useState('');
 
-  // Step wizard state (1 to 9 steps)
+  // Step wizard state (1 to 10 steps)
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentFloorIndex, setCurrentFloorIndex] = useState<number>(1);
   const [stepState, setStepState] = useState<'upload' | 'results'>('upload');
   const [isDragging, setIsDragging] = useState(false);
   
@@ -35,8 +37,24 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
   const [moduleImages, setModuleImages] = useState<Record<string, { id: string; url: string; name: string; size: string }[]>>({});
 
   // Active step computed references
-  const currentUploadStep = currentStep >= 2 && currentStep <= 8 ? uploadSteps[currentStep - 2] : null;
-  const uploadedImages = currentUploadStep ? (moduleImages[currentUploadStep.id] || []) : [];
+  const activeUploadSteps = uploadSteps.filter(step => {
+    if (currentFloorIndex > 1) {
+      return selectedDrawingTypeIds.includes(step.id) && step.id !== 'foundation' && step.id !== 'plinth-beam';
+    }
+    return selectedDrawingTypeIds.includes(step.id);
+  });
+  const totalWizardSteps = activeUploadSteps.length;
+  const hasTransitionStep = floorsCount > 1 && currentFloorIndex < floorsCount;
+  const transitionStepNumber = totalWizardSteps + 2;
+  const totalStepsInTitle = totalWizardSteps + 1 + (hasTransitionStep ? 1 : 0);
+
+  const getStepKey = (stepId?: string) => {
+    if (!stepId) return '';
+    return `${currentFloorIndex}_${stepId}`;
+  };
+
+  const currentUploadStep = currentStep >= 2 && currentStep <= (totalWizardSteps + 1) ? activeUploadSteps[currentStep - 2] : null;
+  const uploadedImages = currentUploadStep ? (moduleImages[getStepKey(currentUploadStep.id)] || []) : [];
   const allUploadedImages: { id: string; url: string; name: string; size: string }[] = (Object.values(moduleImages) as any[]).flat();
   const totalUploadedCount = allUploadedImages.length;
 
@@ -44,7 +62,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     // Determine which files to count
     let count = 3;
     if (stepId) {
-      count = (moduleImages[stepId] || []).length || 3;
+      count = (moduleImages[getStepKey(stepId)] || []).length || 3;
     } else {
       count = totalUploadedCount > 0 ? totalUploadedCount : 3;
     }
@@ -86,11 +104,19 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
       { item: 'Column Main Longitudinal Bars', quantity: round2(450.2 * baseFactor), unit: 'kg', category: 'columns' },
       { item: 'Column Stirrup Ties (8mm)', quantity: round2(110.6 * baseFactor), unit: 'kg', category: 'columns' },
       
-      { item: 'Internal Partitions Brickwork', quantity: round2(120.4 * baseFactor), unit: 'sqm', category: 'plan' },
-      { item: 'Plastering works (1:6)', quantity: round2(240.8 * baseFactor), unit: 'sqm', category: 'plan' },
+      { item: 'Internal Partitions & Superstructure Brickwork', quantity: round2(120.4 * baseFactor), unit: 'sqm', category: 'superstructure' },
+      { item: 'Plastering works (1:6)', quantity: round2(240.8 * baseFactor), unit: 'sqm', category: 'superstructure' },
 
-      { item: 'Exterior Wall Painting / Texture', quantity: round2(310.2 * baseFactor), unit: 'sqm', category: 'elevation' },
-      { item: 'Structural Architectural Projections', quantity: round2(2.5 * baseFactor), unit: 'cum', category: 'elevation' }
+      { item: 'Exterior Wall Painting / Texture', quantity: round2(310.2 * baseFactor), unit: 'sqm', category: 'superstructure' },
+      { item: 'Structural Architectural Projections', quantity: round2(2.5 * baseFactor), unit: 'cum', category: 'superstructure' },
+
+      { item: 'Lintel Beam Concrete (M20/M25)', quantity: round2(3.15 * baseFactor), unit: 'cum', category: 'lintel-beam' },
+      { item: 'Lintel Beam Main Steel reinforcement', quantity: round2(110.4 * baseFactor), unit: 'kg', category: 'lintel-beam' },
+      { item: 'Lintel Beam Shuttering / Formwork', quantity: round2(12.8 * baseFactor), unit: 'm²', category: 'lintel-beam' },
+
+      { item: 'Staircase Waist Slab Concrete (M25)', quantity: round2(4.8 * baseFactor), unit: 'cum', category: 'staircase' },
+      { item: 'Staircase Rebar reinforcement (12mm)', quantity: round2(120.5 * baseFactor), unit: 'kg', category: 'staircase' },
+      { item: 'Staircase Shuttering / Formwork', quantity: round2(15.2 * baseFactor), unit: 'sqm', category: 'staircase' }
     ];
 
     if (stepId) {
@@ -99,29 +125,31 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     return allRows;
   };
 
-  // Toggle highlight selection with logic to lock Plan/Elevation
+  // Toggle highlight selection with logic to lock Superstructure/Lintel/Staircase
   const handleToggleCard = (cardId: string) => {
-    const isPlanOrElevation = cardId === 'plan' || cardId === 'elevation';
-    const coreIds = ['foundation', 'plinth-beam', 'floor-beam', 'floor-slab', 'columns'];
+    if (currentFloorIndex > 1 && (cardId === 'foundation' || cardId === 'plinth-beam')) {
+      return; // Do not toggle foundation / plinth-beam on floor 2+
+    }
+    const isLockedType = cardId === 'superstructure' || cardId === 'lintel-beam' || cardId === 'staircase';
+    const coreIds = currentFloorIndex > 1
+      ? ['floor-beam', 'floor-slab', 'columns']
+      : ['foundation', 'plinth-beam', 'floor-beam', 'floor-slab', 'columns'];
     const isAllCoreSelected = coreIds.every((id) => selectedDrawingTypeIds.includes(id));
 
-    if (isPlanOrElevation && !isAllCoreSelected) {
-      // Prevent selection of plan/elevation until core components are fully selected
+    if (isLockedType && !isAllCoreSelected) {
+      // Prevent selection of superstructure/lintel/staircase until core components are fully selected
       return;
     }
 
     if (selectedDrawingTypeIds.includes(cardId)) {
-      // Keep at least one selected so it doesn't break
-      if (selectedDrawingTypeIds.length > 1) {
-        const nextSelection = selectedDrawingTypeIds.filter((id) => id !== cardId);
-        
-        // If a core id is decommissioned, deselect Plan and Elevation automatically
-        const stillHasAllCore = coreIds.every((id) => nextSelection.includes(id));
-        if (!stillHasAllCore) {
-          setSelectedDrawingTypeIds(nextSelection.filter((id) => id !== 'plan' && id !== 'elevation'));
-        } else {
-          setSelectedDrawingTypeIds(nextSelection);
-        }
+      const nextSelection = selectedDrawingTypeIds.filter((id) => id !== cardId);
+      
+      // If a core id is decommissioned, deselect locked ones automatically
+      const stillHasAllCore = coreIds.every((id) => nextSelection.includes(id));
+      if (!stillHasAllCore) {
+        setSelectedDrawingTypeIds(nextSelection.filter((id) => id !== 'superstructure' && id !== 'lintel-beam' && id !== 'staircase'));
+      } else {
+        setSelectedDrawingTypeIds(nextSelection);
       }
     } else {
       setSelectedDrawingTypeIds([...selectedDrawingTypeIds, cardId]);
@@ -151,51 +179,12 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     }
 
     setErrorStatus('');
-    fetch('https://civil.assessmax.com/api/projects/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        name: projectName.trim(),
-        client_id: selectedClientId,
-        description: 'Selected Drawing Types: ' + selectedDrawingTypeIds.join(', '),
-        status: 'InProgress'
-      })
-    })
-    .then(async (res) => {
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem('active_project_id', data.id);
-        setErrorStatus('');
-        setCurrentStep(2);
-        setStepState('upload');
-      } else {
-        if (res.status === 401 || data.detail === "Invalid or expired token") {
-          onSessionExpired?.();
-          return;
-        }
-
-        const detail = data.detail;
-        let errMsg = 'Failed to submit project to real API.';
-        if (typeof detail === 'string') {
-          errMsg = detail;
-        } else if (Array.isArray(detail)) {
-          errMsg = detail.map((d: any) => d.msg).join(', ');
-        }
-
-        if (errMsg.toLowerCase().includes('token') || errMsg.toLowerCase().includes('expired') || errMsg.toLowerCase().includes('authorized')) {
-          onSessionExpired?.();
-          return;
-        }
-
-        setErrorStatus(errMsg);
-      }
-    })
-    .catch((err) => {
-      setErrorStatus('Network error: Could not save project details. Please check your network connection.');
-    });
+    // Completely bypass external API call
+    const mockId = `mock_proj_${Date.now()}`;
+    localStorage.setItem('active_project_id', mockId);
+    setErrorStatus('');
+    setCurrentStep(2);
+    setStepState('upload');
   };
 
   // Navigation handlers across the multi-step form wizard
@@ -204,9 +193,9 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     if (!currentUploadStep) return;
     
     // Check if at least one image is uploaded, or prompt options
-    const stepImgs = moduleImages[currentUploadStep.id] || [];
+    const stepImgs = moduleImages[getStepKey(currentUploadStep.id)] || [];
     if (stepImgs.length === 0) {
-      setErrorStatus(`Please upload or load at least one blueprint drawing image for '${currentUploadStep.title}' to proceed with estimation, or click 'Skip Module' if you do not have files for this section.`);
+      setErrorStatus(`Please upload or load at least one blueprint drawing image for '${currentUploadStep.title}' to proceed with estimation.`);
       return;
     }
     
@@ -215,7 +204,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
       setStepState('results');
     } else {
       setStepState('upload');
-      if (currentStep < 3) {
+      if (currentStep < (totalWizardSteps + 1)) {
         setCurrentStep(currentStep + 1);
       }
     }
@@ -227,7 +216,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
       setStepState('results');
     } else {
       setStepState('upload');
-      if (currentStep < 3) {
+      if (currentStep < (totalWizardSteps + 1)) {
         setCurrentStep(currentStep + 1);
       } else {
         handleCalculateCost();
@@ -277,7 +266,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     if (currentUploadStep) {
       setModuleImages(prev => ({
         ...prev,
-        [currentUploadStep.id]: [...(prev[currentUploadStep.id] || []), ...newImages]
+        [getStepKey(currentUploadStep.id)]: [...(prev[getStepKey(currentUploadStep.id)] || []), ...newImages]
       }));
     }
   };
@@ -332,19 +321,23 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
         { id: 'col-1', url: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&q=80&w=600', name: 'Column_Stirrup_Spacing_Schedule.png', size: '2.50 MB' },
         { id: 'col-2', url: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80&w=600', name: 'Vertical_Steel_Bars_Location_Offsets.png', size: '1.90 MB' }
       ];
-    } else if (stepId === 'plan') {
+    } else if (stepId === 'superstructure') {
       demos = [
-        { id: 'plan-1', url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&q=80&w=600', name: 'Ground_Floor_Architectural_Plan.png', size: '3.40 MB' }
+        { id: 'sup-1', url: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&q=80&w=600', name: 'Superstructure_Brickwork_Detail.png', size: '3.40 MB' }
       ];
-    } else if (stepId === 'elevation') {
+    } else if (stepId === 'lintel-beam') {
       demos = [
-        { id: 'el-1', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=600', name: 'Front_Elevation_Facade_Finish.png', size: '2.75 MB' }
+        { id: 'lb-1', url: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ecc?auto=format&fit=crop&q=80&w=600', name: 'Lintel_Beam_Reinforcement_Detail.png', size: '2.15 MB' }
+      ];
+    } else if (stepId === 'staircase') {
+      demos = [
+        { id: 'st-1', url: 'https://images.unsplash.com/photo-1563911302283-d2bc1d9e2659?auto=format&fit=crop&q=80&w=600', name: 'Staircase_Structure_Reinforcement_Detail.png', size: '2.15 MB' }
       ];
     }
 
     setModuleImages(prev => ({
       ...prev,
-      [stepId]: demos
+      [getStepKey(stepId)]: demos
     }));
     setErrorStatus('');
   };
@@ -405,18 +398,25 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 3h3v18H6V3zm9 0h3v18h-3V3z" />
           </svg>
         );
-      case 'plan':
-        // Architectural rooms and partitions plan layout
+      case 'superstructure':
+        // Brickwork visual layout
         return (
           <svg className={`w-8 h-8 ${strokeColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
         );
-      case 'elevation':
-        // Front elevation visual blueprint structure
+      case 'lintel-beam':
+        // Lintel structure beam layout
         return (
           <svg className={`w-8 h-8 ${strokeColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8h18M3 16h18M5 5v14M11 5v14M19 5v14" />
+          </svg>
+        );
+      case 'staircase':
+        // Staircase structural visual
+        return (
+          <svg className={`w-8 h-8 ${strokeColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 6h-4v4h-4v4H7v4H3m16-12h2m-6 4h4m-8 4h4m-8 4h4" />
           </svg>
         );
       default:
@@ -434,7 +434,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
       <div className="mb-6">
         <button
           onClick={onCancel}
-          className="group flex items-center text-xs font-semibold text-slate-500 hover:text-violet-600 tracking-wider uppercase gap-1.5 transition-colors cursor-pointer bg-transparent border-0 outline-none"
+          className="group flex items-center text-xs font-semibold text-slate-500 hover:text-[#00cfa5] tracking-wider uppercase gap-1.5 transition-colors cursor-pointer bg-transparent border-0 outline-none"
         >
           <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -447,7 +447,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
       <div className="mb-6 bg-white border border-slate-200/50 rounded-2xl p-6 md:p-8 shadow-sm flex flex-col items-center justify-center relative select-none">
         {currentStep === 1 ? (
           /* Step 1 emblem circle */
-          <div className="w-12 h-12 rounded-full bg-violet-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 mb-4 transition-transform hover:scale-105 duration-250">
+          <div className="w-12 h-12 rounded-full bg-[#00cfa5] text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-4 transition-transform hover:scale-105 duration-250">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
@@ -457,11 +457,11 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
           <div className="flex items-center justify-center mb-4 select-none">
             {/* Circle 1: Uploading Drawings phase (Active when uploading, green checkmark when results are ready) */}
             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-colors duration-300 ${
-              stepState === 'results' || currentStep === 9 
+              stepState === 'results' || currentStep === transitionStepNumber 
                 ? 'bg-[#00cfa5] text-white shadow-md shadow-emerald-450/10' 
-                : 'bg-violet-600 text-white shadow-lg shadow-violet-500/30'
+                : 'bg-[#00cfa5] text-white shadow-lg shadow-emerald-500/30'
             }`}>
-              {stepState === 'results' || currentStep === 9 ? (
+              {stepState === 'results' || currentStep === transitionStepNumber ? (
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
@@ -474,13 +474,13 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
             
             {/* Connecting line 1 to 2 */}
             <div className={`h-0.5 sm:h-1 w-12 sm:w-16 transition-colors duration-300 ${
-              stepState === 'results' || currentStep === 9 ? 'bg-[#00cfa5]' : 'bg-slate-200'
+              stepState === 'results' || currentStep === transitionStepNumber ? 'bg-[#00cfa5]' : 'bg-slate-200'
             }`} />
             
             {/* Circle 2: Detailed Quantity Results phase */}
             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-colors duration-300 ${
-              stepState === 'results' || currentStep === 9 
-                ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30' 
+              stepState === 'results' || currentStep === transitionStepNumber 
+                ? 'bg-[#00cfa5] text-white shadow-lg shadow-emerald-500/30' 
                 : 'bg-slate-100 text-slate-400'
             }`}>
               <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -501,17 +501,19 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
         {/* Progress horizontal line with modern gradient */}
         <div className="w-full max-w-xl h-1.5 bg-slate-100/90 rounded-full mb-4 overflow-hidden relative">
           <div 
-            className="absolute top-0 left-0 h-full bg-gradient-to-r from-violet-600 to-orange-500 rounded-full transition-all duration-500" 
-            style={{ width: `${(currentStep / 9) * 100}%` }}
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-500" 
+            style={{ width: `${(currentStep / totalStepsInTitle) * 100}%` }}
           />
         </div>
  
         {/* Step details text */}
         <p className="text-xs sm:text-sm text-slate-500 tracking-wide">
           {currentStep === 1 ? (
-            <span>Step 1 of 9 : <span className="font-bold text-slate-800">Project</span></span>
+            <span>Step 1 of {totalStepsInTitle} {floorsCount > 1 ? `(Floor ${currentFloorIndex}/${floorsCount})` : ''} : <span className="font-bold text-slate-800">Select Module</span></span>
+          ) : currentStep === transitionStepNumber ? (
+            <span>Step {totalStepsInTitle} of {totalStepsInTitle} : <span className="font-bold text-slate-800">Floor Transition</span></span>
           ) : (
-            <span>Step {currentStep} of 9 : <span className="font-bold text-slate-800">{currentUploadStep?.displayId}</span></span>
+            <span>Floor {currentFloorIndex} of {floorsCount} - Step {currentStep} of {totalStepsInTitle} : <span className="font-bold text-slate-800">{currentUploadStep?.title}</span></span>
           )}
         </p>
       </div>
@@ -528,7 +530,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
         {currentStep === 1 && (
           <div>
             <div className="flex items-start gap-4 mb-6 pb-6 border-b border-slate-100">
-              <div className="w-12 h-12 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#00cfa5] flex items-center justify-center flex-shrink-0">
                 <svg className="w-6 h-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
@@ -540,6 +542,23 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
             </div>
 
             <form onSubmit={handleGoToStep2} className="space-y-6">
+              {floorsCount > 1 && (
+                <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl px-4 py-3 flex items-center justify-between text-emerald-800 animate-fade-in shadow-inner">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-xs font-semibold tracking-wider uppercase flex items-center gap-1">
+                      Active Floor Target: <span className="font-extrabold text-teal-900 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-150">Floor {currentFloorIndex}</span> of {floorsCount}
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-600/10 text-emerald-700 font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    {currentFloorIndex === 1 ? 'Foundation & Base' : `Upper Structural Level ${currentFloorIndex}`}
+                  </span>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Select Client Dropdown */}
                 <div>
@@ -551,7 +570,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                       required
                       value={selectedClientId}
                       onChange={(e) => setSelectedClientId(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-3 pr-10 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 focus:bg-white transition-all cursor-pointer appearance-none"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-3 pr-10 focus:outline-none focus:ring-1 focus:ring-[#00cfa5] focus:border-[#00cfa5] focus:bg-white transition-all cursor-pointer appearance-none"
                     >
                       <option value="">Choose a client for this project</option>
                       {clients.map((c) => (
@@ -579,7 +598,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
                     placeholder="e.g., Residential Building - Phase 1"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 focus:bg-white transition-all placeholder-slate-400"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-[#00cfa5] focus:border-[#00cfa5] focus:bg-white transition-all placeholder-slate-400"
                   />
                 </div>
 
@@ -593,7 +612,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                       required
                       value={floorsCount}
                       onChange={(e) => setFloorsCount(Number(e.target.value))}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-3 pr-10 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 focus:bg-white transition-all cursor-pointer appearance-none"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-3 pr-10 focus:outline-none focus:ring-1 focus:ring-[#00cfa5] focus:border-[#00cfa5] focus:bg-white transition-all cursor-pointer appearance-none"
                     >
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                         <option key={num} value={num}>
@@ -624,18 +643,23 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {mockDrawingTypes.map((card) => {
                     const isSelected = selectedDrawingTypeIds.includes(card.id);
-                    const isPlanOrElevation = card.id === 'plan' || card.id === 'elevation';
+                    const isLockedType = card.id === 'superstructure' || card.id === 'lintel-beam' || card.id === 'staircase';
+                    const isNotApplicableForFloor = currentFloorIndex > 1 && (card.id === 'foundation' || card.id === 'plinth-beam');
                     
-                    const coreIds = ['foundation', 'plinth-beam', 'floor-beam', 'floor-slab', 'columns'];
+                    const coreIds = currentFloorIndex > 1
+                      ? ['floor-beam', 'floor-slab', 'columns']
+                      : ['foundation', 'plinth-beam', 'floor-beam', 'floor-slab', 'columns'];
                     const isAllCoreSelected = coreIds.every((id) => selectedDrawingTypeIds.includes(id));
-                    const isDisabledView = isPlanOrElevation && !isAllCoreSelected;
+                    const isDisabledView = (isLockedType && !isAllCoreSelected) || isNotApplicableForFloor;
 
                     return (
                       <div
                         key={card.id}
                         onClick={() => handleToggleCard(card.id)}
                         className={`border rounded-xl p-5 select-none transition-all duration-250 ${
-                          isDisabledView
+                          isNotApplicableForFloor
+                            ? 'border-slate-200/60 bg-slate-50/50 opacity-45 cursor-not-allowed'
+                            : isDisabledView
                             ? 'border-slate-200/60 bg-slate-50/50 opacity-45 cursor-not-allowed'
                             : isSelected
                             ? 'border-[#00cfa5] bg-emerald-50/10 shadow-md shadow-emerald-500/5 cursor-pointer'
@@ -658,10 +682,14 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                             isDisabledView
                               ? 'bg-slate-100 border-slate-200 text-slate-400'
                               : isSelected
-                              ? 'bg-[#00cfa5] border-[#00cfa5] text-white'
+                              ? 'bg-white border-[#00cfa5] text-[#00cfa5]'
                               : 'border-slate-300'
                           }`}>
-                            {isDisabledView ? (
+                            {isNotApplicableForFloor ? (
+                              <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                            ) : isDisabledView ? (
                               <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                               </svg>
@@ -679,10 +707,18 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                             ? 'text-[#00cfa5]'
                             : 'text-slate-800'
                         }`}>
-                          {card.title} {isDisabledView && <span className="text-[9px] font-semibold text-rose-500/80 ml-1 select-none">(Locked)</span>}
+                          {card.title} {isNotApplicableForFloor ? (
+                            <span className="text-[9px] font-bold text-amber-600/80 ml-1 select-none">(Completed Ground)</span>
+                          ) : isDisabledView ? (
+                            <span className="text-[9px] font-semibold text-rose-500/80 ml-1 select-none">(Locked)</span>
+                          ) : null}
                         </h4>
                         <p className="text-xs text-slate-450 mt-1 leading-snug">
-                          {isDisabledView ? 'Complete initial structural selection first.' : card.description}
+                          {isNotApplicableForFloor 
+                            ? 'Foundational work is completed at ground level. Not required for upper floors.' 
+                            : isDisabledView 
+                            ? 'Complete initial structural selection first.' 
+                            : card.description}
                         </p>
                       </div>
                     );
@@ -701,7 +737,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                 </button>
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-violet-600 to-orange-500 hover:from-violet-500 hover:to-orange-400 text-white font-bold py-3.5 px-8 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-violet-500/10 active:scale-95 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold py-3.5 px-8 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 active:scale-95 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   Create Project
                 </button>
@@ -710,8 +746,8 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
           </div>
         )}
 
-        {/* STEP 2-8: Dynamic Multi-Step Image Upload Interfaces */}
-        {currentStep >= 2 && currentStep <= 8 && stepState === 'upload' && (
+        {/* STEP 2-9: Dynamic Multi-Step Image Upload Interfaces */}
+        {currentStep >= 2 && currentStep <= (totalWizardSteps + 1) && stepState === 'upload' && (
           <div>
             <div className="flex items-start gap-4 mb-6 pb-6 border-b border-slate-100">
               <div className="w-12 h-12 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0 animate-pulse">
@@ -834,34 +870,11 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
               )}
 
               {/* Navigation button set down keel with layered layout exactly matching the screenshots */}
-              <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 select-none">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handlePrevStep}
-                    className="text-slate-600 hover:text-slate-900 border border-slate-200 bg-white font-bold py-3.5 px-6 rounded-xl text-xs uppercase tracking-wider cursor-pointer text-center hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
-                  >
-                    ← Back
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSkipStep}
-                    className="flex items-center justify-between border border-slate-300 bg-white font-semibold py-1.5 px-5 rounded-full text-slate-700 hover:bg-slate-50 cursor-pointer min-w-[124px] shadow-sm text-xs"
-                  >
-                    <div className="flex flex-col text-left leading-tight font-sans mr-4">
-                      <span className="text-[10px] uppercase font-bold text-slate-650">Skip</span>
-                      <span className="text-[10px] uppercase font-bold text-slate-650">Module</span>
-                    </div>
-                    <svg className="w-3.5 h-3.5 text-slate-500 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
+              <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 select-none">
 
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-violet-600 to-orange-500 hover:from-violet-500 hover:to-orange-400 text-white font-bold py-3.5 px-8 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-violet-500/10 active:scale-95 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold py-3.5 px-8 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 active:scale-95 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   Upload and Estimate →
                 </button>
@@ -871,8 +884,8 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
           </div>
         )}
 
-        {/* STEP 2-3 RESULTS: Adaptive Estimation Results */}
-        {(currentStep >= 2 && currentStep <= 3 && stepState === 'results') && (() => {
+        {/* STEP 2-9 RESULTS: Adaptive Estimation Results */}
+        {(currentStep >= 2 && currentStep <= (totalWizardSteps + 1) && stepState === 'results') && (() => {
           const activeStepId = currentUploadStep ? currentUploadStep.id : undefined;
           const displayTitle = `Estimation Results: ${currentUploadStep?.title}`;
           const displaySubtitle = `Detailed quantity takeoff generated specifically for the ${currentUploadStep?.title} module.`;
@@ -944,10 +957,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                 </div>
               </div>
 
-              {/* Note alert card matching second screenshot layout */}
-              <div className="bg-slate-50/55 border border-slate-100 rounded-2xl p-5 mb-6 text-sm text-slate-600 leading-relaxed font-sans shadow-inner">
-                This estimation covers the structures for the <span className="font-bold text-slate-800">'{projectName || "Type-I Residence for P.W.D."}'</span> based on the provided reinforcement and excavation schedules. All estimates follow Indian Standard codes for RCC construction in the Dehradun region.
-              </div>
+
 
               {/* Quantities Table Container matching table in screenshot 2 */}
               <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm mb-6 max-h-[480px] overflow-y-auto">
@@ -972,35 +982,65 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
               </div>
 
               {/* Bottom Footer Back & Create buttons */}
-              <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 font-sans">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStepState('upload');
-                  }}
-                  className="text-slate-600 hover:text-slate-900 border border-slate-200 bg-white font-bold py-3.5 px-8 rounded-full text-xs uppercase tracking-wider cursor-pointer text-center hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
-                >
-                  ← Back
-                </button>
+              <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 font-sans">
                 
                 <button
                   type="button"
                   onClick={() => {
-                    if (currentStep === 3) {
-                      handleCalculateCost();
+                    if (currentStep === (totalWizardSteps + 1)) {
+                      if (hasTransitionStep) {
+                        setCurrentStep(transitionStepNumber);
+                        setStepState('upload');
+                      } else {
+                        handleCalculateCost();
+                      }
                     } else {
                       setStepState('upload');
-                      setCurrentStep(3);
+                      setCurrentStep(currentStep + 1);
                     }
                   }}
-                  className="flex-1 sm:max-w-md bg-gradient-to-r from-violet-600 to-orange-500 hover:from-violet-500 hover:to-orange-400 text-white font-bold py-3.5 px-8 rounded-full text-xs uppercase tracking-wider shadow-lg shadow-violet-500/10 active:scale-95 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
+                  className="flex-1 sm:max-w-md bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold py-3.5 px-8 rounded-full text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 active:scale-95 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  {currentStep === 3 ? "Calculate Cost >" : "Continue to Plinth Beam >"}
+                  {currentStep === (totalWizardSteps + 1) ? (hasTransitionStep ? "Next Floor >" : "Calculate Cost >") : `Continue to ${activeUploadSteps[currentStep - 1]?.title || 'Next Step'} >`}
                 </button>
               </div>
             </div>
           );
         })()}
+
+        {/* STEP 10: Floor Transition */}
+        {currentStep === transitionStepNumber && (
+          <div className="text-center py-10 px-4 font-sans max-w-lg mx-auto animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00cfa5] flex items-center justify-center mx-auto mb-6 shadow-md">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            
+            <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mb-3">
+              Floor {currentFloorIndex} Estimation Complete!
+            </h3>
+            
+            <p className="text-sm text-slate-500 leading-relaxed mb-8">
+              All {totalWizardSteps} structural modules and quantities have been successfully estimated for your <strong>Floor {currentFloorIndex} level</strong>. Since your project is configured with <strong>{floorsCount} floors</strong>, you will now proceed to configure and estimate details for <strong>Floor {currentFloorIndex + 1}</strong>.
+            </p>
+            
+            <button
+              type="button"
+              onClick={() => {
+                const nextFloor = currentFloorIndex + 1;
+                setCurrentFloorIndex(nextFloor);
+                setCurrentStep(1);
+                setStepState('upload');
+                // Pre-remove foundation and plinth beam as we transition to upper level
+                setSelectedDrawingTypeIds(prev => prev.filter(id => id !== 'foundation' && id !== 'plinth-beam'));
+              }}
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold py-4 px-8 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 active:scale-95 transition-all text-center cursor-pointer flex items-center justify-center gap-2"
+            >
+              Configure Floor {currentFloorIndex + 1} <span className="font-semibold text-emerald-100">→</span>
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

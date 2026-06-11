@@ -12,8 +12,30 @@ export default function App() {
   const [currentUserEmail, setCurrentUserEmail] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
-  const [clients, setClients] = useState<Client[]>(mockClients);
+  const [projects, setProjects] = useState<Project[]>(() => {
+    const saved = localStorage.getItem('assessmax_projects');
+    return saved ? JSON.parse(saved) : mockProjects;
+  });
+  const [clients, setClients] = useState<Client[]>(() => {
+    const saved = localStorage.getItem('assessmax_clients');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    // Initialize mock clients with their corresponding project counts
+    return mockClients.map(c => ({
+      ...c,
+      projectsCount: mockProjects.filter(p => p.clientName === c.name).length
+    }));
+  });
+
+  // Track state changes to preserve client-side offline storage
+  useEffect(() => {
+    localStorage.setItem('assessmax_projects', JSON.stringify(projects));
+  }, [projects]);
+
+  useEffect(() => {
+    localStorage.setItem('assessmax_clients', JSON.stringify(clients));
+  }, [clients]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Check for active authenticated persistence session token on startup
@@ -46,81 +68,16 @@ export default function App() {
     setToastMessage('Your session has expired. Please log in again.');
   };
 
-  // Fetch Clients and Projects from real API when authenticated
+  // Zero-latency backend sync offline emulation loop
   useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-
-    // Fetch Clients List
-    fetch('https://civil.assessmax.com/api/clients/list?limit=100', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    .then(async (res) => {
-      const data = await res.json();
-      if (res.ok && data && Array.isArray(data.data)) {
-        const loadedClients: Client[] = data.data.map((c: any) => ({
-          id: c.id,
-          name: c.name || c.company_name || 'Unnamed Client',
-          contact: c.mobile || 'No Contact Info',
-          email: c.email || 'no-email@company.com',
-          projectsCount: 0
-        }));
-        setClients(loadedClients);
-
-        // Fetch Projects List
-        fetchProjectsList(loadedClients, token);
-      } else if (res.status === 401) {
-        handleSessionExpired();
-      }
-    })
-    .catch((err) => {
-      console.error('Failed to load clients from API', err);
-    });
-  }, [isAuthenticated]);
-
-  const fetchProjectsList = (currentClients: Client[], token: string) => {
-    fetch('https://civil.assessmax.com/api/projects/list?limit=100', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    .then(async (res) => {
-      const data = await res.json();
-      if (res.ok && data && Array.isArray(data.data)) {
-        const loadedProjects: Project[] = data.data.map((p: any) => {
-          const matchedClient = currentClients.find((c) => c.id === p.client_id || c.name === p.client_id);
-          return {
-            id: p.id,
-            name: p.name || 'Untitled Project',
-            clientName: matchedClient ? matchedClient.name : 'Internal Project',
-            date: p.created_at ? 'Added, ' + new Date(p.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today',
-            drawingType: p.description || 'CAD Layout',
-            value: 8518670, // Standard template estimate size
-            status: p.status === 'Completed' || p.status === 'Success' ? 'Success' : p.status === 'Failed' ? 'Failed' : 'Pending',
-            floorsCount: 1
-          };
-        });
-        setProjects(loadedProjects);
-
-        // Map and set count of projects per client
-        setClients((prev) =>
-          prev.map((c) => ({
-            ...c,
-            projectsCount: loadedProjects.filter((p) => p.clientName === c.name).length
-          }))
-        );
-      } else if (res.status === 401) {
-        handleSessionExpired();
-      }
-    })
-    .catch((err) => {
-      console.error('Failed to load projects from API', err);
-    });
-  };
+    // Ensure accurate initial values of projects count on client list based on projects list
+    setClients((prev) =>
+      prev.map((c) => ({
+        ...c,
+        projectsCount: projects.filter((p) => p.clientName === c.name).length
+      }))
+    );
+  }, []);
 
   // Trigger floating alert feedback
   useEffect(() => {
