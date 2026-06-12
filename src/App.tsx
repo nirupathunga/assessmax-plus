@@ -38,7 +38,7 @@ export default function App() {
   }, [clients]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Check for active authenticated persistence session token on startup
+  // Restore user session from storage on app load
   useEffect(() => {
     const savedSession = localStorage.getItem('assessmax_session');
     const token = localStorage.getItem('auth_token');
@@ -68,9 +68,9 @@ export default function App() {
     setToastMessage('Your session has expired. Please log in again.');
   };
 
-  // Zero-latency backend sync offline emulation loop
+  // Sync client data with project list on mount
   useEffect(() => {
-    // Ensure accurate initial values of projects count on client list based on projects list
+    // Update project counts for each client
     setClients((prev) =>
       prev.map((c) => ({
         ...c,
@@ -104,12 +104,12 @@ export default function App() {
       )
     );
 
-    setToastMessage(`Project file "${projectToDelete.name}" was successfully decommissioned.`);
+    setToastMessage(`Project "${projectToDelete.name}" removed successfully.`);
   };
 
   const handleCreateProject = (newProj: { name: string; clientName: string; drawingTypes: string[]; floorsCount: number }) => {
     const drawingCount = newProj.drawingTypes.length;
-    // Calculate simulated standard cost dynamically based on drawing layers uploaded, scaled by number of floors
+    // Calculate project cost based on drawing types and floor count
     const simulatedCost = drawingCount * 8518670 * newProj.floorsCount; 
 
     const newlyCreated: Project = {
@@ -125,7 +125,7 @@ export default function App() {
 
     setProjects([newlyCreated, ...projects]);
 
-    // Track statistics for selected developers client
+    // Update client project count
     setClients(
       clients.map((c) =>
         c.name === newProj.clientName
@@ -140,7 +140,7 @@ export default function App() {
 
   const handleAddClient = (newClient: Client) => {
     setClients([...clients, newClient]);
-    setToastMessage(`New client developer "${newClient.name}" successfully onboarded.`);
+    setToastMessage(`Client "${newClient.name}" added successfully.`);
   };
 
   // View router switcher

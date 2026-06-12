@@ -15,7 +15,8 @@ export const mockDrawingTypes: DrawingTypeCard[] = [
   { id: 'floor-slab', title: 'Floor Slab', description: 'Reinforcement, depth dimensions, and concrete grade.' },
   { id: 'columns', title: 'Columns', description: 'Vertical column design, steel schedule, and coordinates.' },
   { id: 'superstructure', title: 'Plan', description: 'Internal rooms, partitions, and architectural layout plans.' },
-  { id: 'lintel-beam', title: 'Elevation', description: 'External front, side, and rear perspective elevations.' },
+  { id: 'elevation', title: 'Elevation', description: 'External front, side, and rear perspective elevations.' },
+  { id: 'lintel-beam', title: 'Lintel Beam', description: 'Lintel beam concrete, ties, and details.' },
   { id: 'staircase', title: 'Staircase', description: 'Staircase layouts, concrete waist slabs, and thread reinforcement.' }
 ];
 

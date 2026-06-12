@@ -15,7 +15,8 @@ const uploadSteps = [
   { id: 'floor-beam', title: 'Floor Beam', displayId: 'floor_beam' },
   { id: 'floor-slab', title: 'Floor Slab', displayId: 'floor_slab' },
   { id: 'columns', title: 'Columns', displayId: 'columns' },
-  { id: 'superstructure', title: 'Superstructure & Finishes', displayId: 'superstructure' },
+  { id: 'superstructure', title: 'Plan', displayId: 'superstructure' },
+  { id: 'elevation', title: 'Elevation', displayId: 'elevation' },
   { id: 'lintel-beam', title: 'Lintel Beam', displayId: 'lintel_beam' },
   { id: 'staircase', title: 'Staircase', displayId: 'staircase' }
 ];
@@ -110,6 +111,10 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
       { item: 'Exterior Wall Painting / Texture', quantity: round2(310.2 * baseFactor), unit: 'sqm', category: 'superstructure' },
       { item: 'Structural Architectural Projections', quantity: round2(2.5 * baseFactor), unit: 'cum', category: 'superstructure' },
 
+      { item: 'Elevation Facade Cladding / Finish', quantity: round2(45.6 * baseFactor), unit: 'sqm', category: 'elevation' },
+      { item: 'Glass Partitioning & Exterior Glazing', quantity: round2(32.8 * baseFactor), unit: 'sqm', category: 'elevation' },
+      { item: 'Exterior Decorative Plastering', quantity: round2(112.5 * baseFactor), unit: 'sqm', category: 'elevation' },
+
       { item: 'Lintel Beam Concrete (M20/M25)', quantity: round2(3.15 * baseFactor), unit: 'cum', category: 'lintel-beam' },
       { item: 'Lintel Beam Main Steel reinforcement', quantity: round2(110.4 * baseFactor), unit: 'kg', category: 'lintel-beam' },
       { item: 'Lintel Beam Shuttering / Formwork', quantity: round2(12.8 * baseFactor), unit: 'm²', category: 'lintel-beam' },
@@ -130,7 +135,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     if (currentFloorIndex > 1 && (cardId === 'foundation' || cardId === 'plinth-beam')) {
       return; // Do not toggle foundation / plinth-beam on floor 2+
     }
-    const isLockedType = cardId === 'superstructure' || cardId === 'lintel-beam' || cardId === 'staircase';
+    const isLockedType = cardId === 'superstructure' || cardId === 'elevation' || cardId === 'lintel-beam' || cardId === 'staircase';
     const coreIds = currentFloorIndex > 1
       ? ['floor-beam', 'floor-slab', 'columns']
       : ['foundation', 'plinth-beam', 'floor-beam', 'floor-slab', 'columns'];
@@ -144,10 +149,10 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     if (selectedDrawingTypeIds.includes(cardId)) {
       const nextSelection = selectedDrawingTypeIds.filter((id) => id !== cardId);
       
-      // If a core id is decommissioned, deselect locked ones automatically
+      // If core element is deselected, deselect optional elements automatically
       const stillHasAllCore = coreIds.every((id) => nextSelection.includes(id));
       if (!stillHasAllCore) {
-        setSelectedDrawingTypeIds(nextSelection.filter((id) => id !== 'superstructure' && id !== 'lintel-beam' && id !== 'staircase'));
+        setSelectedDrawingTypeIds(nextSelection.filter((id) => id !== 'superstructure' && id !== 'elevation' && id !== 'lintel-beam' && id !== 'staircase'));
       } else {
         setSelectedDrawingTypeIds(nextSelection);
       }
@@ -164,7 +169,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
       return;
     }
     if (!projectName.trim()) {
-      setErrorStatus('Please provide a legitimate project name.');
+      setErrorStatus('Project name is required.');
       return;
     }
     if (selectedDrawingTypeIds.length === 0) {
@@ -179,8 +184,8 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     }
 
     setErrorStatus('');
-    // Completely bypass external API call
-    const mockId = `mock_proj_${Date.now()}`;
+    // Create local project ID for development
+    const mockId = `proj_${Date.now()}`;
     localStorage.setItem('active_project_id', mockId);
     setErrorStatus('');
     setCurrentStep(2);
@@ -325,6 +330,10 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
       demos = [
         { id: 'sup-1', url: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&q=80&w=600', name: 'Superstructure_Brickwork_Detail.png', size: '3.40 MB' }
       ];
+    } else if (stepId === 'elevation') {
+      demos = [
+        { id: 'el-1', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=600', name: 'Elevation_Front_Perspective.png', size: '2.80 MB' }
+      ];
     } else if (stepId === 'lintel-beam') {
       demos = [
         { id: 'lb-1', url: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ecc?auto=format&fit=crop&q=80&w=600', name: 'Lintel_Beam_Reinforcement_Detail.png', size: '2.15 MB' }
@@ -342,7 +351,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     setErrorStatus('');
   };
 
-  // Step 9 Submission (Runs Cost Takeoff, then submits and finishes instantly)
+  // Submit project with selected drawings
   const handleCalculateCost = () => {
     setErrorStatus('');
     const clientObj = clients.find((c) => c.id === selectedClientId);
@@ -359,7 +368,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     });
   };
 
-  // Inline SVG render helper depending on the drawing type ID
+  // Render icon for drawing type
   const renderCardSVG = (id: string, active: boolean) => {
     const strokeColor = active ? 'text-[#00cfa5]' : 'text-slate-400';
     switch (id) {
@@ -405,6 +414,13 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
         );
+      case 'elevation':
+        // Elevation view of facade
+        return (
+          <svg className={`w-8 h-8 ${strokeColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3m10-11v11a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+        );
       case 'lintel-beam':
         // Lintel structure beam layout
         return (
@@ -430,7 +446,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
 
   return (
     <div className="flex-1 min-h-screen bg-[#f8f9fc] p-6 md:p-8 font-sans overflow-y-auto relative">
-      {/* Back to Dashboard Link Anchor */}
+      {/* Back button */}
       <div className="mb-6">
         <button
           onClick={onCancel}
@@ -443,19 +459,19 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
         </button>
       </div>
 
-      {/* Main Panel progress step visualizer header */}
+      {/* Progress indicator */}
       <div className="mb-6 bg-white border border-slate-200/50 rounded-2xl p-6 md:p-8 shadow-sm flex flex-col items-center justify-center relative select-none">
         {currentStep === 1 ? (
-          /* Step 1 emblem circle */
+          /* Step 1 emblem */
           <div className="w-12 h-12 rounded-full bg-[#00cfa5] text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-4 transition-transform hover:scale-105 duration-250">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
           </div>
         ) : (
-          /* Multi-step 3-circle indicator exactly matching the AssessMax screenshots */
+          /* Progress steps indicator */
           <div className="flex items-center justify-center mb-4 select-none">
-            {/* Circle 1: Uploading Drawings phase (Active when uploading, green checkmark when results are ready) */}
+            {/* Upload phase */}
             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-colors duration-300 ${
               stepState === 'results' || currentStep === transitionStepNumber 
                 ? 'bg-[#00cfa5] text-white shadow-md shadow-emerald-450/10' 
@@ -472,12 +488,12 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
               )}
             </div>
             
-            {/* Connecting line 1 to 2 */}
+            {/* Divider line */}
             <div className={`h-0.5 sm:h-1 w-12 sm:w-16 transition-colors duration-300 ${
               stepState === 'results' || currentStep === transitionStepNumber ? 'bg-[#00cfa5]' : 'bg-slate-200'
             }`} />
             
-            {/* Circle 2: Detailed Quantity Results phase */}
+            {/* Results phase */}
             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-colors duration-300 ${
               stepState === 'results' || currentStep === transitionStepNumber 
                 ? 'bg-[#00cfa5] text-white shadow-lg shadow-emerald-500/30' 
@@ -643,7 +659,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {mockDrawingTypes.map((card) => {
                     const isSelected = selectedDrawingTypeIds.includes(card.id);
-                    const isLockedType = card.id === 'superstructure' || card.id === 'lintel-beam' || card.id === 'staircase';
+                    const isLockedType = card.id === 'superstructure' || card.id === 'elevation' || card.id === 'lintel-beam' || card.id === 'staircase';
                     const isNotApplicableForFloor = currentFloorIndex > 1 && (card.id === 'foundation' || card.id === 'plinth-beam');
                     
                     const coreIds = currentFloorIndex > 1
@@ -739,7 +755,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                   type="submit"
                   className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold py-3.5 px-8 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 active:scale-95 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  Create Project
+                  {currentFloorIndex === 1 ? 'Create Project' : 'Create'}
                 </button>
               </div>
             </form>

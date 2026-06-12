@@ -100,8 +100,8 @@ export default function Sidebar({ currentView, onViewChange, onSignOut, userEmai
             {firstLetter}
           </div>
           <div className="flex-1 overflow-hidden">
-            <h4 className="text-sm font-bold tracking-tight truncate">{userName || 'Active Expert'}</h4>
-            <p className="text-[10px] text-white/70 truncate">{userEmail || 'expert@assessmax.com'}</p>
+            <h4 className="text-sm font-bold tracking-tight truncate">{userName || 'User'}</h4>
+            <p className="text-[10px] text-white/70 truncate">{userEmail || 'user@assessmax.com'}</p>
           </div>
           {/* Sign Out Trigger */}
           <button

@@ -24,7 +24,7 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
 
   return (
     <div className="flex-1 min-h-screen bg-[#f8f9fc] p-6 md:p-8 font-sans overflow-y-auto">
-      {/* Upper Area Header with subtle badge */}
+        {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <div className="flex items-center gap-2">
@@ -34,10 +34,10 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
               Interactive Workspace
             </div>
           </div>
-          <p className="text-xs text-slate-500 mt-1">Real-time drawing valuation, analytics, and quantities estimation workspace</p>
+          <p className="text-xs text-slate-500 mt-1">Upload and estimate project costs from CAD drawings</p>
         </div>
 
-        {/* Global Action Header Button if needed */}
+        {/* New estimation button */}
         <button
           onClick={onStartNewEstimation}
           className="flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-orange-500 hover:from-violet-500 hover:to-orange-400 text-white font-semibold text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl shadow-lg shadow-violet-500/10 active:scale-95 transition-all self-start cursor-pointer"
@@ -49,9 +49,9 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
         </button>
       </div>
 
-      {/* Prominent Central Launching Banner */}
+        {/* Call-to-action banner */}
       <div className="bg-gradient-to-r from-violet-950 to-indigo-900 border border-violet-850 rounded-2xl p-6 md:p-8 text-white relative overflow-hidden mb-8 shadow-xl">
-        {/* Decorative ambient visual background details */}
+        {/* Background effects */}
         <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-violet-600/10 blur-3xl translate-x-20 -translate-y-20 pointer-events-none" />
         <div className="absolute -bottom-20 left-1/3 w-64 h-64 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
 
@@ -59,12 +59,12 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
           <div className="space-y-3 max-w-xl">
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase font-bold tracking-widest text-violet-300 bg-violet-500/10 px-2 py-1 rounded border border-violet-850">
-                Blueprint Take-off Suite
+                New Estimation
               </span>
             </div>
-            <h2 className="text-xl md:text-2xl font-extrabold tracking-tight leading-tight">Ready to estimate a new project?</h2>
+            <h2 className="text-xl md:text-2xl font-extrabold tracking-tight leading-tight">Start a new project estimation</h2>
             <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
-              Upload your CAD drawing layouts, foundation outlines, or electrical section blueprints. Our system analyzes geometric elements, maps structural counts, and estimates material quantities automatically.
+              Upload your CAD drawing files to get started. Our estimation engine will analyze the drawings and provide quantity takeoffs and cost estimates.
             </p>
           </div>
 
@@ -80,18 +80,18 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
         </div>
       </div>
 
-      {/* Recent Projects Table Section */}
+      {/* Projects table */}
       <div className="bg-white border border-slate-200/60 rounded-xl shadow-sm overflow-hidden mb-4">
-        {/* Filtering and Query Row */}
+        {/* Filters */}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-0.5">
             <h3 className="font-bold text-slate-800 text-sm">Recent Projects</h3>
-            <p className="text-xs text-slate-400">Total {filteredProjects.length} workspaces cataloged</p>
+            <p className="text-xs text-slate-400">Total {filteredProjects.length} projects</p>
           </div>
 
           {projects.length > 0 && (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              {/* Search Key Identifier input */}
+              {/* Search input */}
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -107,7 +107,7 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
                 />
               </div>
 
-              {/* Status Pill List Filter block */}
+              {/* Status filters */}
               <div className="flex bg-slate-100 p-0.5 rounded-lg gap-0.5 border border-slate-200">
                 {(['ALL', 'Success', 'Pending'] as const).map((filterOpt) => (
                   <button
@@ -127,18 +127,18 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
           )}
         </div>
 
-        {/* Dynamic Desktop View Table */}
+        {/* Table or empty state */}
         {filteredProjects.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Project Workspace</th>
-                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Developer Client</th>
-                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Date Uploaded</th>
-                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Drawing Category</th>
-                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 text-right">Drawing Estimation Cost</th>
-                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">Engine Validation</th>
+                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Project Name</th>
+                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Client</th>
+                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Date</th>
+                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Type</th>
+                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 text-right">Cost</th>
+                  <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">Status</th>
                   {onDeleteProject && (
                     <th className="p-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 text-center">Action</th>
                   )}
@@ -179,7 +179,7 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
                             : 'bg-amber-50 text-amber-700 border border-amber-100'
                         }`}>
                           <span className={`w-1 h-1 rounded-full ${proj.status === 'Success' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                          {proj.status === 'Success' ? 'Fully Validated' : 'Validating'}
+                          {proj.status === 'Success' ? 'Complete' : 'Processing'}
                         </span>
                       </td>
                       {onDeleteProject && (
@@ -216,7 +216,7 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
               onClick={onStartNewEstimation}
               className="mt-3 text-xs font-bold text-violet-600 hover:text-indigo-600 uppercase tracking-wider cursor-pointer"
             >
-              Start New Estimation
+              Create Project
             </button>
           </div>
         )}

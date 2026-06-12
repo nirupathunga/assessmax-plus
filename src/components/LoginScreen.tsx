@@ -28,7 +28,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       }
       setIsSubmitting(true);
       
-      // Artificial delay to simulate processing but immediately bypass external API
+      // Simulate network delay
       setTimeout(() => {
         setIsSubmitting(false);
         localStorage.setItem('auth_token', 'bypass_token_12345');
@@ -58,7 +58,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       const first_name = parts[0] || 'Architect';
       const last_name = parts.slice(1).join(' ') || 'Expert';
 
-      // Bypass registration and login the user immediately
+      // Auto-login for local development
       setTimeout(() => {
         setIsSubmitting(false);
         localStorage.setItem('auth_token', 'bypass_token_12345');
@@ -253,9 +253,9 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </form>
 
 
-          {/* Bottom helper footer message */}
+          {/* Footer note */}
           <div className="mt-6 text-center border-t border-slate-900 pt-4">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Independent Quantities Estimator workspace</span>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">Project Estimation Platform</span>
           </div>
         </div>
       </div>

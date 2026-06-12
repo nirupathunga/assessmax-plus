@@ -36,7 +36,7 @@ export function ClientsView({ clients, onAddClient }: ClientsViewProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Clients Directory</h1>
-          <p className="text-xs text-slate-500 mt-1">Manage construction firms, developers, and partners</p>
+          <p className="text-xs text-slate-500 mt-1">Manage clients and project partners</p>
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
@@ -48,7 +48,7 @@ export function ClientsView({ clients, onAddClient }: ClientsViewProps) {
 
       {showAddForm && (
         <div className="bg-white border border-slate-200/60 p-6 rounded-xl shadow-sm mb-6 max-w-xl animate-fade-in">
-          <h3 className="font-bold text-slate-800 text-sm mb-4">Add Developer Client</h3>
+          <h3 className="font-bold text-slate-800 text-sm mb-4">Add Client</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-slate-700 text-[10px] font-bold mb-1.5 uppercase tracking-wider">Company Name</label>
@@ -118,14 +118,14 @@ export function ClientsView({ clients, onAddClient }: ClientsViewProps) {
                 </div>
               </div>
               <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Validated Workspace Client</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Active</span>
               </div>
             </div>
           ))}
         </div>
       ) : (
         <div className="bg-white border border-slate-200/65 rounded-2xl p-12 text-center max-w-xl mx-auto select-none">
-          <p className="text-sm text-slate-500 font-medium">No clients recorded. Click "Add Client" to begin creating your developer ledger.</p>
+          <p className="text-sm text-slate-500 font-medium">No clients recorded yet. Click "Add Client" to begin.</p>
         </div>
       )}
     </div>
@@ -141,8 +141,8 @@ export function ProjectsView({ projects }: ProjectsViewProps) {
   return (
     <div className="flex-1 min-h-screen bg-[#f8f9fc] p-6 md:p-8 font-sans overflow-y-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Active Workspaces</h1>
-        <p className="text-xs text-slate-500 mt-1">Full structural quantity audit files catalog</p>
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Projects</h1>
+        <p className="text-xs text-slate-500 mt-1">All project estimations and results</p>
       </div>
 
       <div className="bg-white border border-slate-200/60 rounded-xl shadow-sm overflow-hidden p-6">
@@ -184,9 +184,9 @@ export function ProjectsView({ projects }: ProjectsViewProps) {
             <svg className="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-3-3v6m-9 1V4a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
             </svg>
-            <h4 className="font-bold text-slate-600 text-sm">No Projects Processed Yet</h4>
+            <h4 className="font-bold text-slate-600 text-sm">No Projects Yet</h4>
             <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
-              Start a drawing estimation to analyze construction layout files.
+              Create a project to see estimation results.
             </p>
           </div>
         )}
@@ -201,20 +201,20 @@ interface InvoicesViewProps {
 }
 
 export function InvoicesView({ projects }: InvoicesViewProps) {
-  // Compute invoices dynamically from the existing logged projects
-  const invoicingValue = projects.length * 35000; // Simulated engineering audit fee standard
+  // Calculate billing summary from projects
+  const invoicingValue = projects.length * 35000;
   
   return (
     <div className="flex-1 min-h-screen bg-[#f8f9fc] p-6 md:p-8 font-sans overflow-y-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Invoice Billing Panel</h1>
-        <p className="text-xs text-slate-500 mt-1">Service auditing fees and calculations receipts</p>
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Invoices</h1>
+        <p className="text-xs text-slate-500 mt-1">Project billing summary</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white border border-slate-200/60 p-6 rounded-xl flex items-center justify-between shadow-sm">
           <div>
-            <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Total Service Fees</span>
+            <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Total Fees</span>
             <div className="text-2xl font-extrabold text-[#f43f5e] mt-1">
               {formatINR(invoicingValue)}
             </div>
@@ -226,7 +226,7 @@ export function InvoicesView({ projects }: InvoicesViewProps) {
 
         <div className="bg-white border border-slate-200/60 p-6 rounded-xl flex items-center justify-between shadow-sm">
           <div>
-            <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Active Standard Cost Limit</span>
+            <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Total Project Value</span>
             <div className="text-2xl font-extrabold text-[#ff7e33] mt-1">
               {formatINR(projects.reduce((acc, p) => acc + p.value, 0))}
             </div>
@@ -242,10 +242,10 @@ export function InvoicesView({ projects }: InvoicesViewProps) {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bill ID</th>
-                <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Drawing Project</th>
-                <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valuation Scope Cost</th>
-                <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Audit Fee</th>
+                <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">ID</th>
+                <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Project</th>
+                <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cost</th>
+                <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fee</th>
                 <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Status</th>
               </tr>
             </thead>
@@ -273,9 +273,9 @@ export function InvoicesView({ projects }: InvoicesViewProps) {
             <svg className="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16V17" />
             </svg>
-            <h4 className="font-bold text-slate-600 text-sm">No Invoice Statements Generated</h4>
+            <h4 className="font-bold text-slate-600 text-sm">No Invoices Yet</h4>
             <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
-              Add drawings workspaces to calculate auditing billing receipts.
+              Create projects to generate invoices.
             </p>
           </div>
         )}
@@ -289,14 +289,14 @@ export function SettingsView() {
   return (
     <div className="flex-1 min-h-screen bg-[#f8f9fc] p-6 md:p-8 font-sans overflow-y-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Workspace Configuration</h1>
-        <p className="text-xs text-slate-500 mt-1">Configure AssessMax workspace defaults, limits, and team access credentials</p>
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Settings</h1>
+        <p className="text-xs text-slate-500 mt-1">Configure workspace preferences</p>
       </div>
 
       <div className="bg-white border border-slate-200/60 rounded-xl p-6 shadow-sm space-y-6 max-w-xl">
         <div className="space-y-1 pb-4 border-b border-slate-100">
-          <h3 className="font-bold text-slate-800 text-sm">Quantities Valuation Engine Defaults</h3>
-          <p className="text-xs text-slate-400">Defaults are applied automatically to new drawings uploads</p>
+          <h3 className="font-bold text-slate-800 text-sm">Engine Settings</h3>
+          <p className="text-xs text-slate-400">Default configuration for new projects</p>
         </div>
 
         <div className="space-y-4">
