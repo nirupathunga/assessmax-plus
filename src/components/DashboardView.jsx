@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { formatINR } from '../mockData';
 
-export default function DashboardView({ projects, onStartNewEstimation, onDeleteProject }) {
+export default function DashboardView({ projects, onStartNewEstimation, onDeleteProject, onSelectProject }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setSearchFilter] = useState('ALL');
 
@@ -216,9 +216,13 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredProjects.map((proj) => (
-                      <tr key={proj.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <tr
+                        key={proj.id}
+                        onClick={() => onSelectProject && onSelectProject(proj.id)}
+                        className="hover:bg-slate-100/60 transition-colors group cursor-pointer"
+                      >
                         <td className="py-4 px-6">
-                          <div className="font-extrabold text-slate-800 text-xs tracking-tight">
+                          <div className="font-extrabold text-[#4c3e80] text-xs tracking-tight">
                             {proj.name}
                           </div>
                           <div className="flex items-center gap-2 mt-1.5">
@@ -227,7 +231,7 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
                             </span>
                             {proj.floorsCount ? (
                               <span className="bg-slate-100 text-slate-600 text-[9px] px-1.5 py-0.5 rounded font-semibold">
-                                {proj.floorsCount} {proj.floorsCount === 1 ? 'Tier' : 'Tiers'}
+                                {proj.floorsCount} {proj.floorsCount === 1 ? 'Floor' : 'Floors'}
                               </span>
                             ) : null}
                           </div>
@@ -260,7 +264,10 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
                         {onDeleteProject && (
                           <td className="py-4 px-6 text-center">
                             <button
-                              onClick={() => onDeleteProject(proj.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteProject(proj.id);
+                              }}
                               className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
                               title="Delete workspace record"
                             >
@@ -308,33 +315,7 @@ export default function DashboardView({ projects, onStartNewEstimation, onDelete
 
         {/* Right Side: Structural Modules Pipeline Checklist Sidebar (4 Cols) */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Quick Informational Interactive Overview */}
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white border border-slate-800 rounded-2xl p-6 shadow-md relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl pointer-events-none" />
 
-            <div className="space-y-4 relative z-10">
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-bold tracking-widest uppercase bg-teal-500/20 border border-teal-500/40 text-teal-400 px-2 py-0.5 rounded">
-                  Active Code Compliance
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                  Takeoff Region Parameters
-                </span>
-                <h4 className="text-sm font-bold text-white">
-                  Dehradun RCC (Indian Standard IS:456)
-                </h4>
-              </div>
-
-              <div className="border-t border-slate-700/50 pt-3.5">
-                <p className="text-[11px] leading-relaxed text-slate-300">
-                  Volumetric extraction parses grade specifications (e.g. M20, M25 concrete) and steel schedules directly from drawings to eliminate manual error.
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* Core Pipeline Status Boards */}
           <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm space-y-4">
