@@ -1,6 +1,0 @@
-{
-  "name": "AssessMax",
-  "description": "Premium industrial-grade estimation workspace & construction drawing validation dashboard.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

@@ -1,8 +1,7 @@
 {
-  "name": "assessmax-plus",
+  "name": "react-example",
   "private": true,
   "version": "0.0.0",
-  "description": "AssessMax Plus: Core frontend architectural layout for multi-tier quantities valuation staging.",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",

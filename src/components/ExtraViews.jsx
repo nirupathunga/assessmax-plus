@@ -387,23 +387,135 @@ export const DEFAULT_LABOUR_RATES = [
   { "item": "Plumber", "rate": 1100, "unit": "day" }
 ];
 
+// =========================================================================
+// MONGO_DB ASYNCHRONOUS CONTROLLER SIMULATION LAYER (API Mocks)
+// =========================================================================
+
+// TODO: Replace with Axios configuration once the Express/MongoDB backend is containerized
+// GET /api/v1/rates/defaults
+// Controller Handler: query default rates documents from `rates` collection
+export const fetchGlobalRates = () => {
+  return new Promise((resolve) => {
+    // Simulating 300ms database roundtrip and query latency
+    setTimeout(() => {
+      const savedCore = localStorage.getItem('assessmax_core_rates');
+      const savedMaterial = localStorage.getItem('assessmax_material_rates');
+      const savedLabour = localStorage.getItem('assessmax_labour_rates');
+
+      resolve({
+        core: savedCore ? JSON.parse(savedCore) : DEFAULT_CORE_RATES,
+        material: savedMaterial ? JSON.parse(savedMaterial) : DEFAULT_MATERIAL_RATES,
+        labour: savedLabour ? JSON.parse(savedLabour) : DEFAULT_LABOUR_RATES
+      });
+    }, 300);
+  });
+};
+
+// PATCH /api/v1/rates/update-item
+// Controller Handler: findOneAndUpdate rate record by description matching primary key
+export const updateGlobalRateAPI = (category, item, newRate) => {
+  return new Promise((resolve, reject) => {
+    // Simulating 200ms document locking & atomic updates in MongoDB cluster
+    setTimeout(() => {
+      try {
+        const storageKey = `assessmax_${category}_rates`;
+        const defaults = category === 'core' ? DEFAULT_CORE_RATES : category === 'material' ? DEFAULT_MATERIAL_RATES : DEFAULT_LABOUR_RATES;
+        const saved = localStorage.getItem(storageKey);
+        let items = saved ? JSON.parse(saved) : [...defaults];
+        
+        items = items.map(r => r.item === item ? { ...r, rate: newRate } : r);
+        localStorage.setItem(storageKey, JSON.stringify(items));
+        
+        resolve({
+          success: true,
+          updatedItem: item,
+          newRate: newRate,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        reject(new Error("MongoDB Write Exception: Document is locked or reference schema mismatch."));
+      }
+    }, 200);
+  });
+};
+
+// POST /api/v1/rates/add-item
+// Controller Handler: insertOne new rate document into the sub-collection
+export const addGlobalRateAPI = (category, newRecord) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      try {
+        const storageKey = `assessmax_${category}_rates`;
+        const defaults = category === 'core' ? DEFAULT_CORE_RATES : category === 'material' ? DEFAULT_MATERIAL_RATES : DEFAULT_LABOUR_RATES;
+        const saved = localStorage.getItem(storageKey);
+        const items = saved ? JSON.parse(saved) : [...defaults];
+        
+        items.push(newRecord);
+        localStorage.setItem(storageKey, JSON.stringify(items));
+
+        resolve({
+          success: true,
+          insertedId: `doc_${Date.now()}`,
+          record: newRecord
+        });
+      } catch (err) {
+        reject(new Error("MongoDB Write Conflict: Document payload malformed."));
+      }
+    }, 250);
+  });
+};
+
+// DELETE /api/v1/rates/delete-item
+// Controller Handler: findOneAndDelete rate record matching specific identifier
+export const deleteGlobalRateAPI = (category, itemName) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      try {
+        const storageKey = `assessmax_${category}_rates`;
+        const defaults = category === 'core' ? DEFAULT_CORE_RATES : category === 'material' ? DEFAULT_MATERIAL_RATES : DEFAULT_LABOUR_RATES;
+        const saved = localStorage.getItem(storageKey);
+        let items = saved ? JSON.parse(saved) : [...defaults];
+        
+        items = items.filter(r => r.item !== itemName);
+        localStorage.setItem(storageKey, JSON.stringify(items));
+
+        resolve({
+          success: true,
+          deletedItem: itemName
+        });
+      } catch (err) {
+        reject(new Error("MongoDB Resource Not Found: Row might already be deleted."));
+      }
+    }, 200);
+  });
+};
+
+// POST /api/v1/rates/reset-defaults
+// Controller Handler: drop current sub-collections and re-bulkInsert primary documents payload
+export const resetAllGlobalRatesAPI = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      localStorage.setItem('assessmax_core_rates', JSON.stringify(DEFAULT_CORE_RATES));
+      localStorage.setItem('assessmax_material_rates', JSON.stringify(DEFAULT_MATERIAL_RATES));
+      localStorage.setItem('assessmax_labour_rates', JSON.stringify(DEFAULT_LABOUR_RATES));
+      resolve({
+        success: true,
+        restoredCount: DEFAULT_CORE_RATES.length + DEFAULT_MATERIAL_RATES.length + DEFAULT_LABOUR_RATES.length
+      });
+    }, 450); // Simulates collection dropping & bulk inserts operation overhead
+  });
+};
+
 export function SettingsView() {
   const [activeTab, setActiveTab] = useState('fixed');
-
-  const [coreRates, setCoreRates] = useState(() => {
-    const saved = localStorage.getItem('assessmax_core_rates');
-    return saved ? JSON.parse(saved) : DEFAULT_CORE_RATES;
-  });
-
-  const [materialRates, setMaterialRates] = useState(() => {
-    const saved = localStorage.getItem('assessmax_material_rates');
-    return saved ? JSON.parse(saved) : DEFAULT_MATERIAL_RATES;
-  });
-
-  const [labourRates, setLabourRates] = useState(() => {
-    const saved = localStorage.getItem('assessmax_labour_rates');
-    return saved ? JSON.parse(saved) : DEFAULT_LABOUR_RATES;
-  });
+  
+  // 2. COMPONENT LIFECYCLE REFACTOR
+  // Initialize initial default rates list as empty arrays ([]) as requested
+  const [coreRates, setCoreRates] = useState([]);
+  const [materialRates, setMaterialRates] = useState([]);
+  const [labourRates, setLabourRates] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // State filtering & custom modification UX
   const [coreSearch, setCoreSearch] = useState('');
@@ -422,95 +534,141 @@ export function SettingsView() {
   const [precisionTolerance, setPrecisionTolerance] = useState(80);
   const [saveBanner, setSaveBanner] = useState(null);
 
-  // Sync state modifications dynamically to offline persistent local storage
-  const saveCore = (updated) => {
-    setCoreRates(updated);
-    localStorage.setItem('assessmax_core_rates', JSON.stringify(updated));
-    triggerSaveFeedback('Core rates (rates) saved successfully.');
-  };
-
-  const saveMaterial = (updated) => {
-    setMaterialRates(updated);
-    localStorage.setItem('assessmax_material_rates', JSON.stringify(updated));
-    triggerSaveFeedback('Material rates (material) saved successfully.');
-  };
-
-  const saveLabour = (updated) => {
-    setLabourRates(updated);
-    localStorage.setItem('assessmax_labour_rates', JSON.stringify(updated));
-    triggerSaveFeedback('Labour rates (labour) saved successfully.');
-  };
+  // Trigger standard useEffect lifecycle hook to resolve default configuration on mount
+  React.useEffect(() => {
+    let active = true;
+    const loadDefaultSchemaRates = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetchGlobalRates();
+        if (active) {
+          setCoreRates(response.core);
+          setMaterialRates(response.material);
+          setLabourRates(response.labour);
+        }
+      } catch (err) {
+        console.error("Failed to query MongoDB collection endpoints:", err);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+    loadDefaultSchemaRates();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const triggerSaveFeedback = (msg) => {
     setSaveBanner(msg);
     setTimeout(() => setSaveBanner(null), 3000);
   };
 
-  const resetAllToDefaults = () => {
-    if (window.confirm('Are you sure you want to revert all rates to defaults?')) {
-      setCoreRates(DEFAULT_CORE_RATES);
-      localStorage.setItem('assessmax_core_rates', JSON.stringify(DEFAULT_CORE_RATES));
-      
-      setMaterialRates(DEFAULT_MATERIAL_RATES);
-      localStorage.setItem('assessmax_material_rates', JSON.stringify(DEFAULT_MATERIAL_RATES));
-
-      setLabourRates(DEFAULT_LABOUR_RATES);
-      localStorage.setItem('assessmax_labour_rates', JSON.stringify(DEFAULT_LABOUR_RATES));
-
-      triggerSaveFeedback('All rates successfully reset to baseline defaults.');
+  const resetAllToDefaults = async () => {
+    if (window.confirm('Are you sure you want to drop MongoDB collections and revert all rates to standard defaults?')) {
+      try {
+        setIsLoading(true);
+        const result = await resetAllGlobalRatesAPI();
+        if (result.success) {
+          setCoreRates(DEFAULT_CORE_RATES);
+          setMaterialRates(DEFAULT_MATERIAL_RATES);
+          setLabourRates(DEFAULT_LABOUR_RATES);
+          triggerSaveFeedback(`Database fully restored! Re-seeded ${result.restoredCount} document objects.`);
+        }
+      } catch (err) {
+        console.error("Seeding operation aborted:", err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  // Specific handles for updating core, material, labour rates inside grid
-  const handleRateChange = (category, itemIndexInFullList, val) => {
+  // 3. TWO-TIER INHERITANCE SYSTEM
+  // Specific handles for updating core, material, labour rates inside grid with async writebacks
+  const handleRateChange = async (category, itemIndexInFullList, itemName, val) => {
     const numericValue = val === '' ? null : Number(val);
     
+    // Optimistic UI updates
     if (category === 'core') {
       const updated = [...coreRates];
       updated[itemIndexInFullList] = { ...updated[itemIndexInFullList], rate: numericValue };
-      saveCore(updated);
+      setCoreRates(updated);
     } else if (category === 'material') {
       const updated = [...materialRates];
       updated[itemIndexInFullList] = { ...updated[itemIndexInFullList], rate: numericValue };
-      saveMaterial(updated);
+      setMaterialRates(updated);
     } else if (category === 'labour') {
       const updated = [...labourRates];
       updated[itemIndexInFullList] = { ...updated[itemIndexInFullList], rate: numericValue };
-      saveLabour(updated);
+      setLabourRates(updated);
+    }
+
+    try {
+      setIsUpdating(true);
+      const res = await updateGlobalRateAPI(category, itemName, numericValue);
+      if (res.success) {
+        triggerSaveFeedback(`MongoDB document '${itemName}' patched successfully.`);
+      }
+    } catch (err) {
+      console.error("Commit failed to database sync query:", err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
-  // For adding a custom rate standard
-  const handleAddCostStandard = (e) => {
+  // For adding a custom rate standard with async backends integration
+  const handleAddCostStandard = async (e) => {
     e.preventDefault();
     if (!newItemName.trim() || !newItemUnit.trim()) return;
 
     const rateVal = newItemRate === '' ? null : Number(newItemRate);
     const newRecord = { item: newItemName.trim(), rate: rateVal, unit: newItemUnit.trim() };
 
-    if (targetCategory === 'core') {
-      saveCore([...coreRates, newRecord]);
-    } else if (targetCategory === 'material') {
-      saveMaterial([...materialRates, newRecord]);
-    } else {
-      saveLabour([...labourRates, newRecord]);
+    try {
+      setIsUpdating(true);
+      const res = await addGlobalRateAPI(targetCategory, newRecord);
+      if (res.success) {
+        if (targetCategory === 'core') {
+          setCoreRates(prev => [...prev, newRecord]);
+        } else if (targetCategory === 'material') {
+          setMaterialRates(prev => [...prev, newRecord]);
+        } else {
+          setLabourRates(prev => [...prev, newRecord]);
+        }
+        triggerSaveFeedback(`Successfully inserted item into MongoDB collection.`);
+      }
+    } catch (err) {
+      console.error("Write rollback executed:", err);
+    } finally {
+      setIsUpdating(false);
+      // Clear state & close modal
+      setNewItemName('');
+      setNewItemRate('');
+      setNewItemUnit('');
+      setShowAddModal(false);
     }
-
-    // Clear state & close modal
-    setNewItemName('');
-    setNewItemRate('');
-    setNewItemUnit('');
-    setShowAddModal(false);
   };
 
-  // For deleting rate rows
-  const handleDeleteRow = (category, originalIndex) => {
-    if (category === 'core') {
-      saveCore(coreRates.filter((_, idx) => idx !== originalIndex));
-    } else if (category === 'material') {
-      saveMaterial(materialRates.filter((_, idx) => idx !== originalIndex));
-    } else if (category === 'labour') {
-      saveLabour(labourRates.filter((_, idx) => idx !== originalIndex));
+  // For deleting rate rows with async writebacks
+  const handleDeleteRow = async (category, originalIndex, itemName) => {
+    try {
+      setIsUpdating(true);
+      const res = await deleteGlobalRateAPI(category, itemName);
+      if (res.success) {
+        if (category === 'core') {
+          setCoreRates(prev => prev.filter((_, idx) => idx !== originalIndex));
+        } else if (category === 'material') {
+          setMaterialRates(prev => prev.filter((_, idx) => idx !== originalIndex));
+        } else if (category === 'labour') {
+          setLabourRates(prev => prev.filter((_, idx) => idx !== originalIndex));
+        }
+        triggerSaveFeedback(`MongoDB document '${itemName}' removed.`);
+      }
+    } catch (err) {
+      console.error("Deletion transaction rolled back:", err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -523,13 +681,40 @@ export function SettingsView() {
     return formatINR(val);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex-1 min-h-screen bg-[#f8f9fc] p-6 md:p-8 font-sans flex flex-col items-center justify-center select-none">
+        <div className="bg-white border border-slate-200/60 p-12 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full text-center">
+          <div className="relative mb-6">
+            <div className="w-16 h-16 rounded-full border-4 border-violet-100 animate-pulse" />
+            <div className="w-16 h-16 rounded-full border-4 border-t-violet-600 border-r-transparent border-b-transparent border-l-transparent animate-spin absolute top-0 left-0" />
+          </div>
+          <h3 className="font-extrabold text-slate-800 text-base tracking-tight uppercase">Connecting to Database</h3>
+          <p className="text-xs text-slate-400 mt-2 font-mono">
+            // GET /api/v1/rates/defaults
+          </p>
+          <p className="text-xs text-slate-500 mt-4 max-w-xs leading-normal">
+            Querying MongoDB replica sets to fetch default unit rate documents. Please wait...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 min-h-screen bg-[#f8f9fc] p-6 md:p-8 font-sans overflow-y-auto">
       
       {/* Title block styling */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Default Construction Rates</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Default Construction Rates</h1>
+            {isUpdating && (
+              <span className="bg-amber-100 text-amber-800 text-[9px] font-bold px-2 py-0.5 rounded animate-pulse font-mono tracking-wider">
+                // MUTATING MONGODB...
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500 mt-1">Configure workspace defaults, material costs, and labor standard specifications</p>
         </div>
         <div className="flex items-center gap-3">
@@ -628,7 +813,7 @@ export function SettingsView() {
                             <input
                               type="number"
                               value={r.rate === null ? '' : r.rate}
-                              onChange={(e) => handleRateChange('core', index, e.target.value)}
+                              onChange={(e) => handleRateChange('core', index, r.item, e.target.value)}
                               placeholder="Derived"
                               step="any"
                               className="w-24 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 text-slate-800 text-xs rounded-lg p-1.5 font-semibold font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
@@ -640,7 +825,7 @@ export function SettingsView() {
                         </td>
                         <td className="p-3 text-center">
                           <button
-                            onClick={() => handleDeleteRow('core', index)}
+                            onClick={() => handleDeleteRow('core', index, r.item)}
                             className="text-red-500 hover:text-red-700 font-bold hover:scale-115 transition-transform cursor-pointer text-xs"
                             title="Delete standard rate reference"
                           >
@@ -711,7 +896,7 @@ export function SettingsView() {
                               <input
                                 type="number"
                                 value={r.rate === null ? '' : r.rate}
-                                onChange={(e) => handleRateChange('material', index, e.target.value)}
+                                onChange={(e) => handleRateChange('material', index, r.item, e.target.value)}
                                 placeholder="Derived"
                                 step="any"
                                 className="w-16 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 text-slate-800 text-xs rounded-lg p-1 font-semibold font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
@@ -723,7 +908,7 @@ export function SettingsView() {
                           </td>
                           <td className="p-2 text-center">
                             <button
-                              onClick={() => handleDeleteRow('material', index)}
+                              onClick={() => handleDeleteRow('material', index, r.item)}
                               className="text-red-500 hover:text-red-750 font-bold hover:scale-115 transition-transform cursor-pointer text-xs"
                             >
                               ✕
@@ -788,7 +973,7 @@ export function SettingsView() {
                               <input
                                 type="number"
                                 value={r.rate === null ? '' : r.rate}
-                                onChange={(e) => handleRateChange('labour', index, e.target.value)}
+                                onChange={(e) => handleRateChange('labour', index, r.item, e.target.value)}
                                 placeholder="Derived"
                                 step="any"
                                 className="w-16 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 text-slate-800 text-xs rounded-lg p-1 font-semibold font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
@@ -800,7 +985,7 @@ export function SettingsView() {
                           </td>
                           <td className="p-2 text-center">
                             <button
-                              onClick={() => handleDeleteRow('labour', index)}
+                              onClick={() => handleDeleteRow('labour', index, r.item)}
                               className="text-red-500 hover:text-red-770 font-bold hover:scale-115 transition-transform cursor-pointer text-xs"
                             >
                               ✕
