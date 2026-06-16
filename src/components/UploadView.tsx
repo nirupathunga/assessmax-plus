@@ -192,20 +192,21 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
     setStepState('upload');
   };
 
-  // Navigation handlers across the multi-step form wizard
+  // Navigation handlers for multi-step wizard - validates uploads and transitions between steps
   const handleNextStep = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!currentUploadStep) return;
     
-    // Check if at least one image is uploaded, or prompt options
+    // Validate that at least one genuine drawing file has been uploaded for processing
     const stepImgs = moduleImages[getStepKey(currentUploadStep.id)] || [];
     if (stepImgs.length === 0) {
-      setErrorStatus(`Please upload or load at least one blueprint drawing image for '${currentUploadStep.title}' to proceed with estimation.`);
+      setErrorStatus(`Please upload at least one blueprint drawing image for '${currentUploadStep.title}' to proceed with estimation.`);
       return;
     }
     
     setErrorStatus('');
     if (stepState === 'upload') {
+      // TODO: Ensure upload file buffer payload streams cleanly into the multi-component processing pipeline.
       setStepState('results');
     } else {
       setStepState('upload');
@@ -296,61 +297,6 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
   };
 
   // Pre-load demo drawings for the active step module
-  const loadDemoDrawings = () => {
-    if (!currentUploadStep) return;
-    const stepId = currentUploadStep.id;
-
-    let demos: { id: string; url: string; name: string; size: string }[] = [];
-    if (stepId === 'foundation') {
-      demos = [
-        { id: 'f-1', url: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80&w=600', name: 'Foundation_Concrete_Grade_M25.png', size: '2.45 MB' },
-        { id: 'f-2', url: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&q=80&w=600', name: 'Footing_Reinforcement_Detail_A.png', size: '1.80 MB' },
-        { id: 'f-3', url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&q=80&w=600', name: 'Pile_Cap_Soil_Bearing_Details.png', size: '3.12 MB' }
-      ];
-    } else if (stepId === 'plinth-beam') {
-      demos = [
-        { id: 'pb-1', url: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ecc?auto=format&fit=crop&q=80&w=600', name: 'Plinth_Beam_Tie_Layout_S1.png', size: '1.95 MB' },
-        { id: 'pb-2', url: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&q=80&w=600', name: 'Beam_Rebar_Crossover_Detail.png', size: '2.10 MB' }
-      ];
-    } else if (stepId === 'floor-beam') {
-      demos = [
-        { id: 'fb-1', url: 'https://images.unsplash.com/photo-1512403754473-2785561399cf?auto=format&fit=crop&q=80&w=600', name: 'Floor_Beam_Span_Section_B4.png', size: '2.22 MB' },
-        { id: 'fb-2', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=600', name: 'Concrete_Slab_Supporting_Grid.png', size: '1.75 MB' }
-      ];
-    } else if (stepId === 'floor-slab') {
-      demos = [
-        { id: 'fs-1', url: 'https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?auto=format&fit=crop&q=80&w=600', name: 'Slab_Two_Way_Rebar_Mesh.png', size: '2.80 MB' }
-      ];
-    } else if (stepId === 'columns') {
-      demos = [
-        { id: 'col-1', url: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&q=80&w=600', name: 'Column_Stirrup_Spacing_Schedule.png', size: '2.50 MB' },
-        { id: 'col-2', url: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80&w=600', name: 'Vertical_Steel_Bars_Location_Offsets.png', size: '1.90 MB' }
-      ];
-    } else if (stepId === 'superstructure') {
-      demos = [
-        { id: 'sup-1', url: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&q=80&w=600', name: 'Superstructure_Brickwork_Detail.png', size: '3.40 MB' }
-      ];
-    } else if (stepId === 'elevation') {
-      demos = [
-        { id: 'el-1', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=600', name: 'Elevation_Front_Perspective.png', size: '2.80 MB' }
-      ];
-    } else if (stepId === 'lintel-beam') {
-      demos = [
-        { id: 'lb-1', url: 'https://images.unsplash.com/photo-1581094288338-2314dddb7ecc?auto=format&fit=crop&q=80&w=600', name: 'Lintel_Beam_Reinforcement_Detail.png', size: '2.15 MB' }
-      ];
-    } else if (stepId === 'staircase') {
-      demos = [
-        { id: 'st-1', url: 'https://images.unsplash.com/photo-1563911302283-d2bc1d9e2659?auto=format&fit=crop&q=80&w=600', name: 'Staircase_Structure_Reinforcement_Detail.png', size: '2.15 MB' }
-      ];
-    }
-
-    setModuleImages(prev => ({
-      ...prev,
-      [getStepKey(stepId)]: demos
-    }));
-    setErrorStatus('');
-  };
-
   // Submit project with selected drawings
   const handleCalculateCost = () => {
     setErrorStatus('');
@@ -885,9 +831,9 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                 </div>
               )}
 
-              {/* Navigation button set down keel with layered layout exactly matching the screenshots */}
+              {/* Primary navigation action - Upload and process diagrams for estimation */}
               <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 select-none">
-
+                {/* TODO: Ensure upload file buffer payload streams cleanly into the multi-component processing pipeline. */}
                 <button
                   type="submit"
                   className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold py-3.5 px-8 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/10 active:scale-95 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
@@ -997,7 +943,7 @@ export default function UploadView({ clients, onCancel, onSubmit, onSessionExpir
                 </table>
               </div>
 
-              {/* Bottom Footer Back & Create buttons */}
+              {/* Production estimation results - Proceed to next module or floor */}
               <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 font-sans">
                 
                 <button
